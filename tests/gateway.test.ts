@@ -129,4 +129,14 @@ describe('gateway classify', () => {
     const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/workSpace/glyph' }))
     expect(d.risk).toBe('green'); expect(d.allowed).toBe(true); expect(d.needsConfirm).toBe(false)
   })
+
+  it('含连字符的合法路径 -> 放行（不误伤 voice-mac-assistant 这类目录名）', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/workSpace/voice-mac-assistant' }))
+    expect(d.allowed).toBe(true); expect(d.risk).toBe('green')
+  })
+
+  it('含空格的合法路径 -> 放行（不误伤 Application Support 这类目录名）', () => {
+    const d = classify(call('list_directory', { path: '~/Library/Application Support' }))
+    expect(d.allowed).toBe(true); expect(d.risk).toBe('green')
+  })
 })
