@@ -14,11 +14,18 @@ export function createOrchestrator(win: BrowserWindow) {
   let live: Awaited<ReturnType<typeof connectLive>> | null = null
   const pendingConfirms = new Map<string, (ok: boolean) => void>()
 
+  // 把所有挂留的确认 resolver 以 false 兑现并清空，避免 Promise 永久挂留 /
+  // Gemini toolCall 永不收到响应（会话回 standby 时调用）。
+  function clearPendingConfirms() {
+    for (const resolve of pendingConfirms.values()) resolve(false)
+    pendingConfirms.clear()
+  }
+
   const machine = createSessionMachine({
     idleMs: CONFIG.IDLE_TIMEOUT_MS,
     onChange: (s) => {
       send(win, IPC.STATE, s)
-      if (s === 'standby') { live?.close(); live = null }
+      if (s === 'standby') { clearPendingConfirms(); live?.close(); live = null }
     }
   })
 
