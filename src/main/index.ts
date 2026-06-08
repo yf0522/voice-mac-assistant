@@ -1,9 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { createOrchestrator } from './orchestrator'
 import { on } from './ipc'
 import { IPC } from '@shared/types'
-import { CONFIG } from './config'
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -22,7 +21,6 @@ app.whenReady().then(() => {
   on(IPC.AUDIO_CHUNK, (b64) => orch.onAudioChunk(b64))
   on(IPC.VAD, (speaking) => orch.onVad(speaking))
   on(IPC.CONFIRM_RESULT, ({ id, ok }) => orch.onConfirmResult(id, ok))
-  ipcMain.handle('cfg:pv-key', () => CONFIG.PICOVOICE_ACCESS_KEY)
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })

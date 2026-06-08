@@ -4,3 +4,5 @@ dist/
 .env
 .DS_Store
 resources/*.ppn
+src/renderer/public/*.tar.gz
+src/renderer/public/vosk-model*
