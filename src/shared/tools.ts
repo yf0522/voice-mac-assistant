@@ -30,6 +30,6 @@ export const functionDeclarations: FunctionDeclaration[] = [
     }, required: ['tool'] } },
   { name: 'query_info', description: '查询时间/日期/系统状态等只读信息',
     parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING } }, required: ['topic'] } },
-  { name: 'run_shell', description: '执行受限 shell 命令（白名单内，需确认）',
+  { name: 'run_shell', description: '执行任意 shell 命令（破坏性命令会请用户确认）',
     parameters: { type: Type.OBJECT, properties: { command: { type: Type.STRING } }, required: ['command'] } }
 ]

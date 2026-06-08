@@ -31,8 +31,12 @@ export async function connectLive(cb: LiveCallbacks) {
       // 关掉"思考"：native-audio 模型默认会先生成一大段推理才开口，导致回复慢、不像真人对话。
       // thinkingBudget=0 让它立即作答，逼近 speech-to-speech 的低延迟。
       thinkingConfig: { thinkingBudget: 0 },
-      // 纯 speech-to-speech：不开转录（用户不需要把语音转成文字旁路）
-      tools: [{ functionDeclarations }]
+      // 快速断句：用户停顿 ~500ms 即判定说完，模型尽快开口（参考成熟语音项目的 0.3-0.6s endpointing）。
+      realtimeInputConfig: {
+        automaticActivityDetection: { silenceDurationMs: 500, prefixPaddingMs: 100 }
+      },
+      // 工具：本地动作函数 + Google 搜索联网（让它能回答实时/事实类问题，即"上网"能力）
+      tools: [{ googleSearch: {} }, { functionDeclarations }]
     },
     callbacks: {
       onopen: () => console.log('[gemini] websocket onopen ✓'),
