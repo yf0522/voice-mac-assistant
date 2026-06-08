@@ -10,6 +10,20 @@ const MIC_PERMS = new Set(['media', 'audioCapture', 'microphone'])
 
 // 调试：把渲染进程 console 落盘到 ~/voxmac-debug.log，方便排查（构建版无 DevTools）
 const DEBUG_LOG = join(homedir(), 'voxmac-debug.log')
+
+// 把主进程 console 也 tee 到日志文件（open 启动时主进程 stdout 脱离终端，否则看不到）
+function teeMainConsole(): void {
+  const tee = (orig: (...a: any[]) => void, tag: string) => (...args: any[]) => {
+    orig(...args)
+    try {
+      const line = args.map(a => (a instanceof Error ? (a.stack ?? a.message) : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')
+      appendFileSync(DEBUG_LOG, `[main:${tag}] ${line}\n`)
+    } catch { /* ignore */ }
+  }
+  console.log = tee(console.log.bind(console), 'log')
+  console.error = tee(console.error.bind(console), 'err')
+  console.warn = tee(console.warn.bind(console), 'warn')
+}
 function attachConsoleLog(win: BrowserWindow): void {
   try { writeFileSync(DEBUG_LOG, `=== VoxMac 启动 ${new Date().toISOString()} ===\n`) } catch { /* ignore */ }
   win.webContents.on('console-message', (...args: unknown[]) => {
@@ -34,6 +48,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  teeMainConsole()
   // ① 触发 macOS 系统麦克风授权弹窗（首次运行会弹；若曾被拒，需到系统设置手动开启）
   if (process.platform === 'darwin') {
     try { await systemPreferences.askForMediaAccess('microphone') } catch { /* 忽略，下方处理器兜底 */ }

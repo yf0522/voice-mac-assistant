@@ -18,7 +18,9 @@ const SYSTEM_INSTRUCTION =
   '收到工具结果后用简短自然的中文口语反馈。无法执行或被安全策略拒绝时，礼貌说明原因。'
 
 export async function connectLive(cb: LiveCallbacks) {
+  console.log('[gemini] connectLive: model=', CONFIG.GEMINI_MODEL, 'keyLen=', CONFIG.GEMINI_API_KEY.length)
   const ai = new GoogleGenAI({ apiKey: CONFIG.GEMINI_API_KEY })
+  let msgCount = 0
   const session = await ai.live.connect({
     model: CONFIG.GEMINI_MODEL,
     config: {
@@ -29,7 +31,9 @@ export async function connectLive(cb: LiveCallbacks) {
       tools: [{ functionDeclarations }]
     },
     callbacks: {
+      onopen: () => console.log('[gemini] websocket onopen ✓'),
       onmessage: (msg) => {
+        if (msgCount++ === 0) console.log('[gemini] 收到首条服务端消息')
         const p = parseServerMessage(msg)
         if (p.audioChunks.length) p.audioChunks.forEach(cb.onAudio)
         if (p.text) cb.onText(p.text)
@@ -37,10 +41,11 @@ export async function connectLive(cb: LiveCallbacks) {
         if (p.interrupted) cb.onInterrupted?.()
         if (p.toolCalls.length) cb.onToolCalls(p.toolCalls)
       },
-      onerror: (e) => console.error('[gemini] error', e),
-      onclose: () => cb.onClose()
+      onerror: (e: any) => console.error('[gemini] onerror', e?.message ?? e, e?.code ?? '', e?.reason ?? ''),
+      onclose: (e: any) => { console.log('[gemini] onclose', e?.code ?? '', e?.reason ?? ''); cb.onClose() }
     }
   })
+  console.log('[gemini] ai.live.connect 已返回 session')
 
   return {
     // 16kHz PCM base64 实时上传

@@ -57,33 +57,44 @@ export function createOrchestrator(win: BrowserWindow) {
     return new Promise(res => pendingConfirms.set(id, res))
   }
 
+  let audioOut = 0
+  let audioIn = 0
   return {
     machine,
     async onWake() {
+      console.log('[orch] onWake 触发, live已连接?=', !!live)
       machine.onWake()
       if (!live) {
         try {
+          console.log('[orch] 正在连接 Gemini Live...')
           live = await connectLive({
-            onAudio: (a) => { send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
-            onText: (t) => send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }),
-            onUserText: (t) => send(win, IPC.TRANSCRIPT, { role: 'user', text: t }),
+            onAudio: (a) => { if (audioIn++ === 0) console.log('[orch] 收到模型音频(首帧)'); send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
+            onText: (t) => { console.log('[orch] 模型文本:', t); send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }) },
+            onUserText: (t) => { console.log('[orch] 用户转录:', t); send(win, IPC.TRANSCRIPT, { role: 'user', text: t }) },
             onInterrupted: () => send(win, IPC.INTERRUPT, undefined),
             onToolCalls: (calls) => {
+              console.log('[orch] 收到 toolCalls:', calls.map(c => c.name).join(','))
               // 串行化：前一批 handleToolCalls 完成后再处理下一批，避免并发乱序。
               toolQueue = toolQueue.then(() => handleToolCalls(calls)).catch(() => {})
             },
-            onClose: () => { live = null }
+            onClose: () => { console.log('[orch] Gemini 会话关闭'); live = null }
           })
+          console.log('[orch] Gemini Live 已连接 ✓')
         } catch (e: any) {
           // 连接失败（无 key / 网络）不应让主进程 unhandled rejection；
           // 通过 IPC 把错误以动作日志形式告知渲染层并回到待机。
+          console.error('[orch] Gemini Live 连接失败:', e)
           live = null
           send(win, IPC.ACTION_LOG, { error: `Gemini Live 连接失败：${String(e?.message ?? e)}` })
           machine.onDismiss()
         }
       }
     },
-    onAudioChunk(b64: string) { live?.sendAudio(b64); machine.onActivity() },
+    onAudioChunk(b64: string) {
+      if (audioOut++ === 0) console.log('[orch] 开始向 Gemini 上传音频(首帧), live?=', !!live)
+      if (audioOut % 100 === 0) console.log('[orch] 已上传音频帧:', audioOut)
+      live?.sendAudio(b64); machine.onActivity()
+    },
     onVad(_speaking: boolean) { machine.onActivity() },
     onConfirmResult(id: string, ok: boolean) { pendingConfirms.get(id)?.(ok); pendingConfirms.delete(id) }
   }
