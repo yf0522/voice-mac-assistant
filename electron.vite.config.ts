@@ -7,7 +7,8 @@ export default defineConfig({
     resolve: { alias: { '@shared': resolve('src/shared') } }
   },
   preload: {
-    build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } }
+    build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } },
+    resolve: { alias: { '@shared': resolve('src/shared') } }
   },
   renderer: {
     root: 'src/renderer',

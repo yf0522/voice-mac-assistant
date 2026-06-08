@@ -1,0 +1,73 @@
+import { BrowserWindow } from 'electron'
+import { IPC } from '@shared/types'
+import type { ToolCall, ToolResult } from '@shared/types'
+import { CONFIG } from './config'
+import { classify } from './security/gateway'
+import { createExecutor } from './actions/executor'
+import { realRunner } from './actions/runner'
+import { createSessionMachine } from './session/stateMachine'
+import { connectLive } from './gemini/liveClient'
+import { send } from './ipc'
+
+export function createOrchestrator(win: BrowserWindow) {
+  const execute = createExecutor(realRunner)
+  let live: Awaited<ReturnType<typeof connectLive>> | null = null
+  const pendingConfirms = new Map<string, (ok: boolean) => void>()
+
+  const machine = createSessionMachine({
+    idleMs: CONFIG.IDLE_TIMEOUT_MS,
+    onChange: (s) => {
+      send(win, IPC.STATE, s)
+      if (s === 'standby') { live?.close(); live = null }
+    }
+  })
+
+  async function handleToolCalls(calls: ToolCall[]) {
+    const results: ToolResult[] = []
+    for (const call of calls) {
+      const decision = classify(call)
+      send(win, IPC.ACTION_LOG, { call, decision })
+      if (!decision.allowed) {
+        results.push({ id: call.id, name: call.name, ok: false, error: decision.reason }); continue
+      }
+      if (decision.needsConfirm) {
+        const ok = await requestConfirm(call.id, decision.confirmPrompt ?? call.name)
+        if (!ok) { results.push({ id: call.id, name: call.name, ok: false, error: '用户取消' }); continue }
+      }
+      results.push(await execute(call))
+    }
+    live?.sendToolResponses(results)
+    machine.onActivity()
+  }
+
+  function requestConfirm(id: string, prompt: string): Promise<boolean> {
+    send(win, IPC.CONFIRM_REQUEST, { id, prompt })
+    return new Promise(res => pendingConfirms.set(id, res))
+  }
+
+  return {
+    machine,
+    async onWake() {
+      machine.onWake()
+      if (!live) {
+        try {
+          live = await connectLive({
+            onAudio: (a) => { send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
+            onText: (t) => send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }),
+            onToolCalls: (calls) => handleToolCalls(calls),
+            onClose: () => { live = null }
+          })
+        } catch (e: any) {
+          // 连接失败（无 key / 网络）不应让主进程 unhandled rejection；
+          // 通过 IPC 把错误以动作日志形式告知渲染层并回到待机。
+          live = null
+          send(win, IPC.ACTION_LOG, { error: `Gemini Live 连接失败：${String(e?.message ?? e)}` })
+          machine.onDismiss()
+        }
+      }
+    },
+    onAudioChunk(b64: string) { live?.sendAudio(b64); machine.onActivity() },
+    onVad(_speaking: boolean) { machine.onActivity() },
+    onConfirmResult(id: string, ok: boolean) { pendingConfirms.get(id)?.(ok); pendingConfirms.delete(id) }
+  }
+}
