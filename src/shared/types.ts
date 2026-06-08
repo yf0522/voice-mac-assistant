@@ -36,5 +36,6 @@ export const IPC = {
   MODEL_AUDIO: 'model:audio',
   TRANSCRIPT: 'model:transcript',
   ACTION_LOG: 'action:log',
+  ACTION_RESULT: 'action:result',
   CONFIRM_REQUEST: 'action:confirm-request'
 } as const

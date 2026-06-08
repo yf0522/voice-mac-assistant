@@ -79,9 +79,6 @@ vox.onTranscript((t: { role?: string; text: string }) => {
   if (!t?.text) return
   if (t.role === 'user') ui.addUserText(t.text)
   else ui.addAssistantText(t.text)
-  // 模型在工具结果回灌后才会说话——此时把仍待定的动作视为已完成
-  pendingActions.forEach(a => a.done(true))
-  pendingActions.clear()
 })
 
 vox.onActionLog((log: { call?: { id: string; name: string }; decision?: { risk: Risk; allowed: boolean }; error?: string }) => {
@@ -90,23 +87,23 @@ vox.onActionLog((log: { call?: { id: string; name: string }; decision?: { risk: 
     return
   }
   if (!log.call || !log.decision) return
+  // 仅创建 ⏳ 条目并登记到 Map；最终 ✓/✗ 由 ACTION_RESULT 按 id 精确回填
   const handle = ui.addAction(log.call.name, log.decision.risk)
-  if (!log.decision.allowed) {
-    // 红线动作被拒绝：立刻标记失败
-    handle.done(false)
-  } else {
-    pendingActions.set(log.call.id, handle)
-  }
+  pendingActions.set(log.call.id, handle)
+})
+
+// 精确动作结果：主进程对每个 ToolResult（拒绝/取消/执行）都发一条，按 id 标记成败
+vox.onActionResult((r: { id: string; ok: boolean }) => {
+  const handle = pendingActions.get(r.id)
+  if (!handle) return
+  handle.done(r.ok)
+  pendingActions.delete(r.id)
 })
 
 vox.onConfirmRequest(async ({ id, prompt }: { id: string; prompt: string }) => {
   const ok = await ui.confirm(prompt)
   vox.confirm(id, ok)
-  if (!ok) {
-    // 用户取消：把对应动作标记失败
-    pendingActions.get(id)?.done(false)
-    pendingActions.delete(id)
-  }
+  // 取消时主进程会回发 ACTION_RESULT({ok:false})，由 onActionResult 统一标记，无需在此处理
 })
 
 // ---- 唤醒词监听 ----

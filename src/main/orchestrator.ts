@@ -24,17 +24,19 @@ export function createOrchestrator(win: BrowserWindow) {
 
   async function handleToolCalls(calls: ToolCall[]) {
     const results: ToolResult[] = []
+    // 把一个动作结果同时收集并以 ACTION_RESULT 发给渲染层（按 id 精确标记 ✓/✗）
+    const record = (r: ToolResult) => { results.push(r); send(win, IPC.ACTION_RESULT, r) }
     for (const call of calls) {
       const decision = classify(call)
       send(win, IPC.ACTION_LOG, { call, decision })
       if (!decision.allowed) {
-        results.push({ id: call.id, name: call.name, ok: false, error: decision.reason }); continue
+        record({ id: call.id, name: call.name, ok: false, error: decision.reason }); continue
       }
       if (decision.needsConfirm) {
         const ok = await requestConfirm(call.id, decision.confirmPrompt ?? call.name)
-        if (!ok) { results.push({ id: call.id, name: call.name, ok: false, error: '用户取消' }); continue }
+        if (!ok) { record({ id: call.id, name: call.name, ok: false, error: '用户取消' }); continue }
       }
-      results.push(await execute(call))
+      record(await execute(call))
     }
     live?.sendToolResponses(results)
     machine.onActivity()
