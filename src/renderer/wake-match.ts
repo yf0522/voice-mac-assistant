@@ -1,28 +1,34 @@
 /**
- * 唤醒词模糊匹配：判断一段 STT 转写文本里是否出现唤醒词「贾维斯」。
+ * 唤醒词模糊匹配：判断一段 STT 转写文本里是否出现唤醒词「贾维斯」(jiǎ wéi sī)。
  *
- * vosk 中文小模型对短词容易同音误识，故采用启发式：
- *   归一化（去标点/空格）后，文本中存在「<首字><中字><尾字>」三字相邻片段，
- *   其中首字 ∈ 贾家加嘉，中字 ∈ 维伟为위唯,尾字 ∈ 斯司师思丝。
- * 纯字符串处理、无副作用，便于单测。
+ * 背景：vosk 中文小模型词典里没有「贾维斯」这个名字，会就近映射成同音常用词，
+ * 实测变体有 佳木斯 / 家微丝 / 讲微丝 / 价位微丝 等——按汉字匹配根本覆盖不全。
+ * 但它们的「拼音」高度一致：首音节都以 ji 开头、末音节都是 si。
+ * 故改为拼音匹配：转写转拼音后，存在一个 2~4 音节滑窗，
+ *   首音节 startsWith 'ji'（jiǎ/jiā/jiǎng/jià…）且末音节 === 'si'（sī/丝/思/司…）。
+ * 这能命中所有观测变体，同时排除高频混淆词：
+ *   加微信 = jia-wei-xin（尾 xin≠si）✗   今天天气 = jin-…（无 si）✗
+ * 纯函数、无副作用，便于单测。
  */
-
-// 候选近音字集合（贾/维/斯 各自的常见误识同音字）
-const HEAD = new Set(['贾', '家', '加', '嘉'])
-const MID = new Set(['维', '伟', '为', '唯', '惟'])
-const TAIL = new Set(['斯', '司', '师', '思', '丝'])
+import { pinyin } from 'pinyin-pro'
 
 /** 去掉所有非中文字符（标点、空格、字母、数字等），仅保留汉字。 */
 function normalize(text: string): string {
-  return text.replace(/[^一-鿿]/g, '')
+  return text.replace(/[^一-龥]/g, '')
 }
 
 export function matchesWakePhrase(text: string): boolean {
   if (!text) return false
   const s = normalize(text)
-  // 需要连续三字「首-中-尾」均落在各自候选集合内
-  for (let i = 0; i + 2 < s.length; i++) {
-    if (HEAD.has(s[i]) && MID.has(s[i + 1]) && TAIL.has(s[i + 2])) return true
+  if (s.length < 2) return false
+  const syl = pinyin(s, { toneType: 'none', type: 'array' }) as string[]
+  // 滑窗 2~4 音节：首音节以 ji 开头、末音节为 si
+  for (let i = 0; i < syl.length; i++) {
+    for (let len = 2; len <= 4 && i + len <= syl.length; len++) {
+      const first = syl[i]
+      const last = syl[i + len - 1]
+      if (first.startsWith('ji') && last === 'si') return true
+    }
   }
   return false
 }

@@ -27,6 +27,7 @@
   "dependencies": {
     "@google/genai": "^2.8.0",
     "dotenv": "^17.4.2",
+    "pinyin-pro": "^3.28.1",
     "vosk-browser": "^0.0.8"
   }
 }
