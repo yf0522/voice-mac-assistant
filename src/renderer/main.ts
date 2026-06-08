@@ -119,7 +119,10 @@ vox.onConfirmRequest(async ({ id, prompt }: { id: string; prompt: string }) => {
   } catch (e: any) {
     console.error('[wakeword] 启动失败', e)
     const detail = e?.message ?? String(e)
-    ui.addAssistantText('⚠️ 唤醒词初始化失败：' + detail)
-    ui.addAssistantText('（若提示 SharedArrayBuffer/缺模型/fetch 失败，把这条发给我）')
+    if (/permission/i.test(detail) || e?.name === 'NotAllowedError') {
+      ui.addAssistantText('🎤 麦克风权限被拒。请到「系统设置 → 隐私与安全性 → 麦克风」勾选 Electron（或你的终端），然后重启 App。')
+    } else {
+      ui.addAssistantText('⚠️ 唤醒词初始化失败：' + detail)
+    }
   }
 })()
