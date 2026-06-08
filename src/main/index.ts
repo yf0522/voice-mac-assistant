@@ -1,10 +1,23 @@
 import { app, BrowserWindow, systemPreferences, session } from 'electron'
 import { join } from 'path'
+import { appendFileSync, writeFileSync } from 'fs'
+import { homedir } from 'os'
 import { createOrchestrator } from './orchestrator'
 import { on } from './ipc'
 import { IPC } from '@shared/types'
 
 const MIC_PERMS = new Set(['media', 'audioCapture', 'microphone'])
+
+// 调试：把渲染进程 console 落盘到 ~/voxmac-debug.log，方便排查（构建版无 DevTools）
+const DEBUG_LOG = join(homedir(), 'voxmac-debug.log')
+function attachConsoleLog(win: BrowserWindow): void {
+  try { writeFileSync(DEBUG_LOG, `=== VoxMac 启动 ${new Date().toISOString()} ===\n`) } catch { /* ignore */ }
+  win.webContents.on('console-message', (...args: unknown[]) => {
+    const a0 = args[0] as { message?: string } | undefined
+    const message = a0 && typeof a0 === 'object' && 'message' in a0 ? a0.message : (args[2] as string)
+    try { appendFileSync(DEBUG_LOG, String(message) + '\n') } catch { /* ignore */ }
+  })
+}
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -30,6 +43,7 @@ app.whenReady().then(async () => {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => MIC_PERMS.has(permission))
 
   const win = createWindow()
+  attachConsoleLog(win)
   const orch = createOrchestrator(win)
   on(IPC.WAKE_DETECTED, () => orch.onWake())
   on(IPC.AUDIO_CHUNK, (b64) => orch.onAudioChunk(b64))
