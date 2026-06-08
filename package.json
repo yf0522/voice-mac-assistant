@@ -1,0 +1,33 @@
+{
+  "name": "voice-mac-assistant",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./out/main/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "electron": "^42.3.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "@google/genai": "^2.8.0",
+    "@picovoice/porcupine-web": "^4.0.0",
+    "@picovoice/web-voice-processor": "^4.0.10",
+    "dotenv": "^17.4.2"
+  }
+}
