@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('vox', {
   sendAudio: (b64: string) => ipcRenderer.send(IPC.AUDIO_CHUNK, b64),
   vad: (speaking: boolean) => ipcRenderer.send(IPC.VAD, speaking),
   confirm: (id: string, ok: boolean) => ipcRenderer.send(IPC.CONFIRM_RESULT, { id, ok }),
+  getPicovoiceKey: () => ipcRenderer.invoke('cfg:pv-key'),
   // main -> renderer 订阅
   onState: (cb: (s: string) => void) => ipcRenderer.on(IPC.STATE, (_e, s) => cb(s)),
   onModelAudio: (cb: (b64: string) => void) => ipcRenderer.on(IPC.MODEL_AUDIO, (_e, a) => cb(a)),
