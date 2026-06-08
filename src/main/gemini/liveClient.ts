@@ -14,8 +14,10 @@ export interface LiveCallbacks {
 }
 
 const SYSTEM_INSTRUCTION =
-  '你是 macOS 桌面语音助手「贾维斯」。理解用户的中文语音意图，需要操作电脑时调用相应工具函数；' +
-  '收到工具结果后用简短自然的中文口语反馈。无法执行或被安全策略拒绝时，礼貌说明原因。'
+  '你是 macOS 桌面语音助手「贾维斯」。像真人朋友一样用简短、自然的中文口语对话——' +
+  '一般一句话说完，绝不长篇大论，不要复述用户的话。' +
+  '理解用户语音意图：需要操作电脑时立即调用相应工具函数，拿到结果后用一句话确认（如"好了，已打开Safari"）。' +
+  '普通闲聊就直接简短回答。无法执行或被安全策略拒绝时，一句话礼貌说明原因。'
 
 export async function connectLive(cb: LiveCallbacks) {
   console.log('[gemini] connectLive: model=', CONFIG.GEMINI_MODEL, 'keyLen=', CONFIG.GEMINI_API_KEY.length)

@@ -44,6 +44,13 @@ function stopSession() {
   pendingActions.clear()
 }
 
+// 模型说完(最后一块音频后 ~900ms 无新音频)把界面切回聆听态（仅 UI，不影响全双工）。
+let speakingTimer: ReturnType<typeof setTimeout> | null = null
+function touchSpeaking() {
+  if (speakingTimer) clearTimeout(speakingTimer)
+  speakingTimer = setTimeout(() => ui.setState('listening'), 900)
+}
+
 async function onWake() {
   vox.wake() // 通知主进程建立 Gemini 会话
   ui.setState('listening')
@@ -51,16 +58,11 @@ async function onWake() {
   startIdleCountdown()
   playback.bargeIn() // 唤醒时打断任何残余播放
   if (!capture) {
+    // 全双工：麦克风持续上传；打断由 Gemini 服务端 VAD 判定（onInterrupt），不在本地粗暴 bargeIn。
+    // 本地 VAD 仅用于重置静默计时，不再触发打断（避免把模型回声误判为用户插话）。
     capture = await startCapture(
       (b64) => vox.sendAudio(b64),
-      (speaking) => {
-        vox.vad(speaking)
-        if (speaking) {
-          resetIdle()
-          playback.bargeIn() // 用户开口 → 打断 AI 当前播报
-          ui.setState('listening')
-        }
-      }
+      (speaking) => { vox.vad(speaking); if (speaking) resetIdle() }
     )
   }
 }
@@ -72,6 +74,7 @@ vox.onState((s: string) => {
 
 vox.onModelAudio((b64: string) => {
   ui.setState('speaking')
+  touchSpeaking() // 维持说话态，停一会儿后切回聆听（仅 UI）
   playback.enqueue(b64)
 })
 
