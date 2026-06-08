@@ -1,7 +1,8 @@
 import { Type } from '@google/genai'
+import type { FunctionDeclaration } from '@google/genai'
 
 // 单一真相源：Gemini 工具声明。新增动作时只改这里 + 对应 handler。
-export const functionDeclarations = [
+export const functionDeclarations: FunctionDeclaration[] = [
   { name: 'open_app', description: '打开 macOS 应用',
     parameters: { type: Type.OBJECT, properties: { app_name: { type: Type.STRING } }, required: ['app_name'] } },
   { name: 'quit_app', description: '退出 macOS 应用',
