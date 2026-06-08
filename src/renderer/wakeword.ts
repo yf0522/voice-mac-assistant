@@ -25,16 +25,20 @@ export async function startWakeWord(
   const recognizer = new model.KaldiRecognizer(RECOGNIZER_SAMPLE_RATE)
 
   let lastWake = 0
-  const fire = (text: string) => {
-    if (!text || !matchesWakePhrase(text)) return
+  console.log('[wakeword] vosk 模型已加载, recognizer sampleRate=', RECOGNIZER_SAMPLE_RATE)
+  const fire = (text: string, kind: string) => {
+    if (!text) return
+    const matched = matchesWakePhrase(text)
+    console.log(`[wakeword] ${kind}: "${text}" -> ${matched ? '✅命中' : '未命中'}`)
+    if (!matched) return
     const now = Date.now()
     if (now - lastWake < DEBOUNCE_MS) return
     lastWake = now
     onWake()
   }
   // 最终结果：result.result.text；部分结果：result.result.partial
-  recognizer.on('result', (m: any) => fire(m?.result?.text ?? ''))
-  recognizer.on('partialresult', (m: any) => fire(m?.result?.partial ?? ''))
+  recognizer.on('result', (m: any) => fire(m?.result?.text ?? '', 'final'))
+  recognizer.on('partialresult', (m: any) => fire(m?.result?.partial ?? '', 'partial'))
 
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
@@ -45,7 +49,10 @@ export async function startWakeWord(
   const node = new AudioWorkletNode(ctx, 'capture-processor')
   // worklet 以原始采样率推送 Float32 帧；recognizer 用 acceptWaveformFloat
   // 重采样到自身的 16kHz（vosk 内部按传入 sampleRate 处理）。
+  let frameCount = 0
   node.port.onmessage = (e: MessageEvent<Float32Array>) => {
+    if (frameCount === 0) console.log('[wakeword] 开始收到麦克风音频帧, 长度=', e.data.length, 'ctx.sampleRate=', ctx.sampleRate)
+    frameCount++
     try {
       recognizer.acceptWaveformFloat(e.data, ctx.sampleRate)
     } catch (err) {
