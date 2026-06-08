@@ -14,6 +14,9 @@ export function createOrchestrator(win: BrowserWindow) {
   let live: Awaited<ReturnType<typeof connectLive>> | null = null
   const pendingConfirms = new Map<string, (ok: boolean) => void>()
 
+  // toolCall 串行队列：保证多批 handleToolCalls 顺序执行，sendToolResponses 不乱序。
+  let toolQueue: Promise<void> = Promise.resolve()
+
   // 把所有挂留的确认 resolver 以 false 兑现并清空，避免 Promise 永久挂留 /
   // Gemini toolCall 永不收到响应（会话回 standby 时调用）。
   function clearPendingConfirms() {
@@ -63,7 +66,10 @@ export function createOrchestrator(win: BrowserWindow) {
           live = await connectLive({
             onAudio: (a) => { send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
             onText: (t) => send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }),
-            onToolCalls: (calls) => handleToolCalls(calls),
+            onToolCalls: (calls) => {
+              // 串行化：前一批 handleToolCalls 完成后再处理下一批，避免并发乱序。
+              toolQueue = toolQueue.then(() => handleToolCalls(calls)).catch(() => {})
+            },
             onClose: () => { live = null }
           })
         } catch (e: any) {
