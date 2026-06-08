@@ -32,8 +32,20 @@ export async function connectLive(cb: LiveCallbacks) {
     },
     callbacks: {
       onopen: () => console.log('[gemini] websocket onopen ✓'),
-      onmessage: (msg) => {
-        if (msgCount++ === 0) console.log('[gemini] 收到首条服务端消息')
+      onmessage: (msg: any) => {
+        msgCount++
+        // 调试：打印每条消息的结构摘要，看模型到底回了什么
+        const sc = msg?.serverContent
+        const summary = {
+          keys: Object.keys(msg ?? {}),
+          sc: sc ? Object.keys(sc) : undefined,
+          parts: sc?.modelTurn?.parts?.map((p: any) => p.inlineData ? `audio:${p.inlineData.mimeType}` : p.text ? `text:${p.text}` : Object.keys(p)),
+          turnComplete: sc?.turnComplete,
+          interrupted: sc?.interrupted,
+          generationComplete: sc?.generationComplete,
+          toolCall: msg?.toolCall ? msg.toolCall.functionCalls?.map((c: any) => c.name) : undefined
+        }
+        console.log(`[gemini] msg#${msgCount}:`, JSON.stringify(summary))
         const p = parseServerMessage(msg)
         if (p.audioChunks.length) p.audioChunks.forEach(cb.onAudio)
         if (p.text) cb.onText(p.text)
