@@ -8,8 +8,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
-    "paths": { "@shared/*": ["src/shared/*"] }
+    "paths": { "@shared/*": ["./src/shared/*"] }
   },
   "include": ["src", "tests"]
 }
