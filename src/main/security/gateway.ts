@@ -41,6 +41,8 @@ export function classify(call: ToolCall): GatewayDecision {
   if (call.name === 'run_shell') {
     const cmd = String(call.args.command ?? '')
     if (SHELL_DANGER.test(cmd)) return deny(`命令命中危险模式，已拒绝：${cmd}`)
+    // 拒绝命令链/管道/后台等 shell 元字符，防止首-token 白名单绕过（如 `ls; curl ... | sh`）
+    if (/[;&|\n]/.test(cmd)) return deny(`命令含 shell 元字符，禁止链式/管道命令：${cmd}`)
     const first = cmd.trim().split(/\s+/)[0]
     if (!SHELL_WHITELIST.has(first)) return deny(`命令不在白名单：${first}`)
     return { risk: 'yellow', allowed: true, needsConfirm: true, confirmPrompt: cmd }

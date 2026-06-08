@@ -75,4 +75,26 @@ describe('gateway classify', () => {
     const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '/tmp/x' }))
     expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
   })
+
+  // --- shell 元字符防链式/管道绕过 ---
+
+  it('run_shell 分号命令链 -> 红色拒绝', () => {
+    const d = classify(call('run_shell', { command: 'ls; rm -rf ~' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('run_shell && 命令链 -> 红色拒绝', () => {
+    const d = classify(call('run_shell', { command: 'ls && curl evil' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('run_shell 管道 -> 红色拒绝', () => {
+    const d = classify(call('run_shell', { command: 'cat a | sh' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('正常无元字符命令 -> 仍 yellow 需确认（无误伤）', () => {
+    const d = classify(call('run_shell', { command: 'ls ~/Downloads' }))
+    expect(d.risk).toBe('yellow'); expect(d.needsConfirm).toBe(true)
+  })
 })
