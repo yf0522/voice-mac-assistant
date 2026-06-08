@@ -3,6 +3,8 @@ export function createPlayback() {
   const ctx = new AudioContext({ sampleRate: 24000 })
   let nextStart = 0
   const sources: AudioBufferSourceNode[] = []
+  // 抖动缓冲：首块/下溢时多排 150ms 再起播，吸收网络抖动，避免“一卡一卡”的空隙。
+  const JITTER = 0.15
 
   function base64ToPcm(b64: string): Int16Array {
     const bin = atob(b64); const bytes = new Uint8Array(bin.length)
@@ -18,8 +20,10 @@ export function createPlayback() {
       for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768
       const node = ctx.createBufferSource()
       node.buffer = buf; node.connect(ctx.destination)
-      const t = Math.max(ctx.currentTime, nextStart)
-      node.start(t); nextStart = t + buf.duration
+      // 下溢（nextStart 落后于当前时间，说明上一块播完了还没来下一块）时，
+      // 加 150ms 缓冲再起播，让后续块攒上来，连续无缝；否则紧接上一块尾部。
+      if (nextStart < ctx.currentTime) nextStart = ctx.currentTime + JITTER
+      node.start(nextStart); nextStart += buf.duration
       sources.push(node)
       node.onended = () => { const i = sources.indexOf(node); if (i >= 0) sources.splice(i, 1) }
     },

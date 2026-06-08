@@ -26,6 +26,9 @@ export async function connectLive(cb: LiveCallbacks) {
     config: {
       responseModalities: [Modality.AUDIO],
       systemInstruction: SYSTEM_INSTRUCTION,
+      // 关掉"思考"：native-audio 模型默认会先生成一大段推理才开口，导致回复慢、不像真人对话。
+      // thinkingBudget=0 让它立即作答，逼近 speech-to-speech 的低延迟。
+      thinkingConfig: { thinkingBudget: 0 },
       // 纯 speech-to-speech：不开转录（用户不需要把语音转成文字旁路）
       tools: [{ functionDeclarations }]
     },
