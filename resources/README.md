@@ -1,45 +1,45 @@
-# 唤醒词资源（Porcupine）
+# 唤醒词资源（vosk-browser · 本地离线）
 
-VoxMac 使用 Picovoice Porcupine 监听中文唤醒词「贾维斯」。运行唤醒词功能前，
-需要你自行从 Picovoice 控制台训练并下载两个文件，**SDK 版本：porcupine-web 4.0.0 /
-web-voice-processor 4.0.10**。
+VoxMac 使用 [`vosk-browser`](https://github.com/ccoreilly/vosk-browser)（WASM 版 Kaldi）
+在渲染进程内做**完全本地离线**的中文 STT，再对转写文本模糊匹配唤醒词「贾维斯」。
+**无需任何账号、AccessKey 或云服务**。
 
-## 1. 获取 AccessKey
+## 1. 下载并打包模型
 
-1. 注册并登录 [console.picovoice.ai](https://console.picovoice.ai)。
-2. 复制你的 **AccessKey**。
-3. 写入项目根目录 `.env`：
+运行项目根目录的脚本（约 40MB，需联网一次）：
 
-   ```
-   PICOVOICE_ACCESS_KEY=你的_access_key
-   ```
-
-   主进程通过 `CONFIG.PICOVOICE_ACCESS_KEY` 读取，并经 IPC 通道 `cfg:pv-key`
-   提供给渲染进程（preload `vox.getPicovoiceKey()`）。
-
-## 2. 训练中文「贾维斯」唤醒词
-
-1. 在控制台进入 **Porcupine → Train Wake Word**。
-2. 语言选择 **Chinese (Mandarin)**，唤醒短语填「贾维斯」。
-3. 平台（Platform）选择 **Web (WASM)**。
-4. 训练完成后下载，得到唤醒词文件 `*.ppn`。
-
-## 3. 下载中文模型参数
-
-在控制台的模型参数下载页，下载 **Chinese** 的 Porcupine 参数模型，得到
-`porcupine_params_zh.pv`。
-
-## 4. 放置文件
-
-把两个文件重命名 / 放到 **`src/renderer/public/`**，使其在渲染进程以根路径提供：
-
-```
-src/renderer/public/jarvis.ppn                 ->  /jarvis.ppn
-src/renderer/public/porcupine_params_zh.pv     ->  /porcupine_params_zh.pv
+```bash
+bash scripts/fetch-model.sh
 ```
 
-代码（`src/renderer/wakeword.ts`）正是以 `/jarvis.ppn` 和
-`/porcupine_params_zh.pv` 这两个 `publicPath` 加载模型的。
+脚本做的事：
 
-> 这两个 `.ppn` / `.pv` 是用户私有资源（与 AccessKey 绑定），不纳入版本库；
-> `src/renderer/public/` 目录仅以 `.gitkeep` 占位。
+1. 从 `https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip`
+   下载中文小模型；
+2. 解压，把模型目录里的内容（`am/` `conf/` `graph/` `ivector/` …）
+   打包成 **gzipped tar**；
+3. 输出到 `src/renderer/public/vosk-model-cn.tar.gz`，
+   在渲染进程以根路径 `/vosk-model-cn.tar.gz` 提供。
+
+> vosk-browser 的 `createModel(url)` 接收的就是一个 **`.tar.gz`**：
+> 解压后顶层即模型目录（含 `am/conf/graph/ivector`）。脚本已按此结构打包。
+
+## 2. 代码加载方式
+
+`src/renderer/wakeword.ts`：
+
+- `createModel('/vosk-model-cn.tar.gz')` 加载模型（后台 Web Worker）；
+- `new model.KaldiRecognizer(16000)` 建 16kHz 识别器；
+- 麦克风音频经 AudioWorklet 推送 `Float32Array` 帧，调
+  `recognizer.acceptWaveformFloat(frame, ctx.sampleRate)`（vosk 内部重采样）；
+- 监听 `result` / `partialresult` 事件，取 `result.text` / `result.partial`，
+  调 `matchesWakePhrase`（见 `src/renderer/wake-match.ts`）判定是否命中。
+
+## 3. 唤醒词模糊匹配
+
+中文小模型对短词易同音误识，`matchesWakePhrase` 用近音候选集合容错：
+归一化去标点后，检测连续三字「首-中-尾」分别落在
+贾/家/加/嘉 · 维/伟/为/唯/惟 · 斯/司/师/思/丝。
+
+> 模型文件较大（~40MB），**不纳入版本库**（见 `.gitignore` 的
+> `src/renderer/public/*.tar.gz`）；`src/renderer/public/` 仅以 `.gitkeep` 占位。

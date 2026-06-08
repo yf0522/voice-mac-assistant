@@ -25,25 +25,24 @@ macOS 实时语音助手（Speech‑to‑Speech）。唤醒词「**贾维斯**�
 
 ## 技术栈
 
-Electron + TypeScript + electron-vite · Gemini Live（`@google/genai`）· Porcupine 唤醒词（`@picovoice/porcupine-web`）· Vitest。
+Electron + TypeScript + electron-vite · Gemini Live（`@google/genai`）· 本地离线唤醒词（`vosk-browser`，WASM Kaldi，零账号零 key）· Vitest。
 主进程持有 API Key、运行 Gemini 会话 / 安全网关 / 执行器 / 状态机；渲染进程负责音频采集（16kHz PCM）/ 唤醒词 / 24kHz 播放 / UI；两进程经 contextBridge + IPC 通信。
 
 ## 前置条件
 
 1. **Node.js** 18+ 与 npm。
-2. **Gemini API Key** —— 写入 `.env` 的 `GEMINI_API_KEY`。
-3. **Picovoice AccessKey** —— 在 [console.picovoice.ai](https://console.picovoice.ai) 注册（免费档），写入 `.env` 的 `PICOVOICE_ACCESS_KEY`。
-4. **「贾维斯」唤醒词模型** —— 在 Picovoice 控制台训练一个中文唤醒词「贾维斯」，选 **Web (WASM)** 平台导出 `jarvis.ppn`；并下载中文模型参数 `porcupine_params_zh.pv`。把两个文件放到 `src/renderer/public/`（使其分别以 `/jarvis.ppn`、`/porcupine_params_zh.pv` 提供）。详见 `resources/README.md`。
-5.（可选）`brightness` CLI（`brew install brightness`）—— 用于 set_brightness。
+2. **Gemini API Key** —— 写入 `.env` 的 `GEMINI_API_KEY`（这是唯一需要的 key）。
+3. **中文唤醒模型** —— 运行 `bash scripts/fetch-model.sh` 下载并打包 vosk 中文小模型（约 40MB）到 `src/renderer/public/vosk-model-cn.tar.gz`，无需任何账号 / key。详见 `resources/README.md`。
+4.（可选）`brightness` CLI（`brew install brightness`）—— 用于 set_brightness。
 6.（可选）「快捷指令」App 里创建名为「打开勿扰模式」「关闭勿扰模式」的快捷指令 —— 用于 set_dnd。
 7.（可选）已安装 **iTerm2**，且 `claude` / `code` / `gemini` 在 PATH —— 用于 launch_dev_tool。
 
 ## 安装与运行
 
 ```bash
-cp .env.example .env        # 填入 GEMINI_API_KEY 与 PICOVOICE_ACCESS_KEY
-# 把 jarvis.ppn 和 porcupine_params_zh.pv 放进 src/renderer/public/
+cp .env.example .env        # 填入 GEMINI_API_KEY（唯一需要的 key）
 npm install
+bash scripts/fetch-model.sh # 下载中文唤醒模型到 src/renderer/public/
 npm run dev                 # 开发模式启动
 ```
 
@@ -61,7 +60,7 @@ npm run build     # 生产构建（electron-vite）
 
 ## 真机端到端验收清单（Task 10.2）
 
-需 `.env` 与唤醒词模型就位后手动验证：
+需 `.env` 与唤醒模型（`bash scripts/fetch-model.sh`）就位后手动验证：
 
 - [ ] **唤醒 + 连续对话**：说「贾维斯」→ 进入聆听、顶部显示「连续对话中 · 静默 5:00」；说「打开 Safari」→ 动作日志 `open_app`（绿）→ Safari 打开 → 语音「已打开 Safari」；**不再喊唤醒词**直接说「看下下载文件夹」→ `list_directory` 执行 → 语音播报
 - [ ] **危险确认**：「把下载文件夹清空」类 / run_shell → 弹确认窗 → 取消则文件不动；确认则执行
@@ -73,5 +72,5 @@ npm run build     # 生产构建（electron-vite）
 ## 已知限制
 
 - Gemini Live API 处于 Preview / experimental，接口与模型可能演进（当前模型 `gemini-2.0-flash-live-001`，见 `src/main/config.ts`）。
-- 唤醒词需自行训练中文「贾维斯」模型（Porcupine 内置无中文「贾维斯」）。
+- 唤醒走 vosk 本地全量中文 STT + 模糊匹配「贾维斯」（见 `src/renderer/wake-match.ts`）：完全离线、零账号，但中文小模型对短词存在同音误识，故用近音候选集合容错；常驻识别有一定 CPU 开销，可能偶发误触。
 - 重采样为线性插值（无抗混叠低通），如识别质量受影响可后续优化。
