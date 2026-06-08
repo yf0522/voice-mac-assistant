@@ -115,10 +115,9 @@ vox.onConfirmRequest(async ({ id, prompt }: { id: string; prompt: string }) => {
 // ---- 唤醒词监听 ----
 ;(async () => {
   try {
-    const key = await vox.getPicovoiceKey()
-    await startWakeWord(key, onWake)
+    await startWakeWord(onWake)
   } catch (e) {
     console.error('[wakeword] 启动失败', e)
-    ui.addAssistantText('⚠️ 唤醒词初始化失败，请检查 PICOVOICE_ACCESS_KEY 与 resources/jarvis.ppn')
+    ui.addAssistantText('⚠️ 唤醒词初始化失败，请确认已运行 bash scripts/fetch-model.sh 生成 src/renderer/public/vosk-model-cn.tar.gz')
   }
 })()
