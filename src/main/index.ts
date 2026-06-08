@@ -9,8 +9,12 @@ function createWindow(): BrowserWindow {
     width: 420, height: 680, resizable: false, titleBarStyle: 'hiddenInset',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false }
   })
-  if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else win.loadFile(join(__dirname, '../renderer/index.html'))
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+    win.webContents.openDevTools({ mode: 'detach' }) // dev 下自动开控制台，方便看渲染进程真实报错
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'))
+  }
   return win
 }
 

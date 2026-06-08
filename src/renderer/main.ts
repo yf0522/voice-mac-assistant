@@ -116,8 +116,10 @@ vox.onConfirmRequest(async ({ id, prompt }: { id: string; prompt: string }) => {
 ;(async () => {
   try {
     await startWakeWord(onWake)
-  } catch (e) {
+  } catch (e: any) {
     console.error('[wakeword] 启动失败', e)
-    ui.addAssistantText('⚠️ 唤醒词初始化失败，请确认已运行 bash scripts/fetch-model.sh 生成 src/renderer/public/vosk-model-cn.tar.gz')
+    const detail = e?.message ?? String(e)
+    ui.addAssistantText('⚠️ 唤醒词初始化失败：' + detail)
+    ui.addAssistantText('（若提示 SharedArrayBuffer/缺模型/fetch 失败，把这条发给我）')
   }
 })()
