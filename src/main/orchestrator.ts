@@ -91,8 +91,8 @@ export function createOrchestrator(win: BrowserWindow) {
       }
     },
     onAudioChunk(b64: string) {
-      if (audioOut++ === 0) console.log('[orch] 开始向 Gemini 上传音频(首帧), live?=', !!live)
-      if (audioOut % 100 === 0) console.log('[orch] 已上传音频帧:', audioOut)
+      if (audioOut++ === 0) console.log('[orch] 开始向 Gemini 上传音频(首包), live?=', !!live)
+      if (audioOut % 30 === 0) console.log('[orch] 已上传音频包:', audioOut)
       live?.sendAudio(b64); machine.onActivity()
     },
     onVad(_speaking: boolean) { machine.onActivity() },

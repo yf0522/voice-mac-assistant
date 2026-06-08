@@ -17,7 +17,8 @@ function teeMainConsole(): void {
     orig(...args)
     try {
       const line = args.map(a => (a instanceof Error ? (a.stack ?? a.message) : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')
-      appendFileSync(DEBUG_LOG, `[main:${tag}] ${line}\n`)
+      const ts = new Date().toISOString().slice(11, 23) // HH:MM:SS.mmm 便于测时延
+      appendFileSync(DEBUG_LOG, `${ts} [main:${tag}] ${line}\n`)
     } catch { /* ignore */ }
   }
   console.log = tee(console.log.bind(console), 'log')
