@@ -26,8 +26,7 @@ export async function connectLive(cb: LiveCallbacks) {
     config: {
       responseModalities: [Modality.AUDIO],
       systemInstruction: SYSTEM_INSTRUCTION,
-      // 开启用户语音转录，服务端才会回 serverContent.inputTranscription
-      inputAudioTranscription: {},
+      // 纯 speech-to-speech：不开转录（用户不需要把语音转成文字旁路）
       tools: [{ functionDeclarations }]
     },
     callbacks: {
