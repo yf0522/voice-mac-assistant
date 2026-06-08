@@ -66,6 +66,8 @@ export function createOrchestrator(win: BrowserWindow) {
           live = await connectLive({
             onAudio: (a) => { send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
             onText: (t) => send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }),
+            onUserText: (t) => send(win, IPC.TRANSCRIPT, { role: 'user', text: t }),
+            onInterrupted: () => send(win, IPC.INTERRUPT, undefined),
             onToolCalls: (calls) => {
               // 串行化：前一批 handleToolCalls 完成后再处理下一批，避免并发乱序。
               toolQueue = toolQueue.then(() => handleToolCalls(calls)).catch(() => {})

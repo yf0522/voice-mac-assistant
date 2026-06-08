@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('vox', {
   onState: (cb: (s: string) => void) => ipcRenderer.on(IPC.STATE, (_e, s) => cb(s)),
   onModelAudio: (cb: (b64: string) => void) => ipcRenderer.on(IPC.MODEL_AUDIO, (_e, a) => cb(a)),
   onTranscript: (cb: (t: any) => void) => ipcRenderer.on(IPC.TRANSCRIPT, (_e, t) => cb(t)),
+  onInterrupt: (cb: () => void) => ipcRenderer.on(IPC.INTERRUPT, () => cb()),
   onActionLog: (cb: (l: any) => void) => ipcRenderer.on(IPC.ACTION_LOG, (_e, l) => cb(l)),
   onActionResult: (cb: (r: any) => void) => ipcRenderer.on(IPC.ACTION_RESULT, (_e, r) => cb(r)),
   onConfirmRequest: (cb: (r: any) => void) => ipcRenderer.on(IPC.CONFIRM_REQUEST, (_e, r) => cb(r))

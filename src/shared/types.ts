@@ -35,6 +35,7 @@ export const IPC = {
   IDLE_TICK: 'session:idle-tick',
   MODEL_AUDIO: 'model:audio',
   TRANSCRIPT: 'model:transcript',
+  INTERRUPT: 'model:interrupt',
   ACTION_LOG: 'action:log',
   ACTION_RESULT: 'action:result',
   CONFIRM_REQUEST: 'action:confirm-request'

@@ -7,6 +7,8 @@ import type { ToolResult } from '@shared/types'
 export interface LiveCallbacks {
   onAudio: (base64pcm24k: string) => void
   onText: (text: string) => void
+  onUserText?: (text: string) => void   // 用户语音转录（inputTranscription）
+  onInterrupted?: () => void            // 模型生成被打断（interrupted）
   onToolCalls: (calls: ReturnType<typeof parseServerMessage>['toolCalls']) => void
   onClose: () => void
 }
@@ -22,6 +24,8 @@ export async function connectLive(cb: LiveCallbacks) {
     config: {
       responseModalities: [Modality.AUDIO],
       systemInstruction: SYSTEM_INSTRUCTION,
+      // 开启用户语音转录，服务端才会回 serverContent.inputTranscription
+      inputAudioTranscription: {},
       tools: [{ functionDeclarations }]
     },
     callbacks: {
@@ -29,6 +33,8 @@ export async function connectLive(cb: LiveCallbacks) {
         const p = parseServerMessage(msg)
         if (p.audioChunks.length) p.audioChunks.forEach(cb.onAudio)
         if (p.text) cb.onText(p.text)
+        if (p.inputTranscription) cb.onUserText?.(p.inputTranscription)
+        if (p.interrupted) cb.onInterrupted?.()
         if (p.toolCalls.length) cb.onToolCalls(p.toolCalls)
       },
       onerror: (e) => console.error('[gemini] error', e),

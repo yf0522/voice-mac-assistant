@@ -20,5 +20,22 @@ describe('parseServerMessage', () => {
   it('空消息返回空结构', () => {
     const out = parseServerMessage({})
     expect(out.audioChunks).toEqual([]); expect(out.text).toBe(''); expect(out.toolCalls).toEqual([])
+    expect(out.inputTranscription).toBeUndefined(); expect(out.interrupted).toBeUndefined()
+  })
+
+  it('提取用户语音转录 inputTranscription', () => {
+    const msg = { serverContent: { inputTranscription: { text: '打开浏览器' } } }
+    const out = parseServerMessage(msg)
+    expect(out.inputTranscription).toBe('打开浏览器')
+  })
+
+  it('提取助手转录 outputTranscription 并入 text', () => {
+    const msg = { serverContent: { outputTranscription: { text: '好的' } } }
+    expect(parseServerMessage(msg).text).toBe('好的')
+  })
+
+  it('interrupted 标志为 true', () => {
+    const out = parseServerMessage({ serverContent: { interrupted: true } })
+    expect(out.interrupted).toBe(true)
   })
 })

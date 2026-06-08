@@ -75,6 +75,12 @@ vox.onModelAudio((b64: string) => {
   playback.enqueue(b64)
 })
 
+// 模型生成被打断（用户插话）→ 立即停止并清空残余播放
+vox.onInterrupt(() => {
+  playback.bargeIn()
+  ui.setState('listening')
+})
+
 vox.onTranscript((t: { role?: string; text: string }) => {
   if (!t?.text) return
   if (t.role === 'user') ui.addUserText(t.text)
