@@ -13,7 +13,9 @@ import { matchesWakePhrase } from './wake-match'
  *
  * 返回 { stop } 用于释放麦克风、AudioContext 与模型 worker。
  */
-const MODEL_URL = '/vosk-model-cn.tar.gz'
+// 基于当前页面地址解析为绝对 URL：dev 下是 http://localhost:5173/...，
+// 构建版是 file://.../out/renderer/...，两者 vosk worker 都能 fetch（绝对 / 在 file:// 下会指向磁盘根，故用 location 基准）。
+const MODEL_URL = new URL('vosk-model-cn.tar.gz', location.href).href
 const RECOGNIZER_SAMPLE_RATE = 16000
 // 命中后去抖窗口：避免一次说话连续触发多次唤醒。
 const DEBOUNCE_MS = 2500
@@ -21,6 +23,7 @@ const DEBOUNCE_MS = 2500
 export async function startWakeWord(
   onWake: () => void
 ): Promise<{ stop: () => Promise<void> }> {
+  console.log('[wakeword] 开始加载模型:', MODEL_URL)
   const model = await createModel(MODEL_URL)
   const recognizer = new model.KaldiRecognizer(RECOGNIZER_SAMPLE_RATE)
 
