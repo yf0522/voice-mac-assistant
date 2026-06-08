@@ -97,4 +97,36 @@ describe('gateway classify', () => {
     const d = classify(call('run_shell', { command: 'ls ~/Downloads' }))
     expect(d.risk).toBe('yellow'); expect(d.needsConfirm).toBe(true)
   })
+
+  // --- C1: 路径元字符拒绝（防 launch_dev_tool 命令注入 RCE）---
+
+  it('launch_dev_tool project_path 含 $() 命令替换 -> 红色拒绝', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/proj$(touch /tmp/x)' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('launch_dev_tool project_path 含反引号 -> 红色拒绝', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/proj`whoami`' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('launch_dev_tool project_path 含分号 -> 红色拒绝', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/proj;rm -rf ~' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('launch_dev_tool project_path 含换行 -> 红色拒绝', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/proj\ntouch /tmp/x' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('list_directory path 含 $() -> 红色拒绝', () => {
+    const d = classify(call('list_directory', { path: '~/$(whoami)' }))
+    expect(d.risk).toBe('red'); expect(d.allowed).toBe(false)
+  })
+
+  it('launch_dev_tool 正常 project_path -> 绿色放行（无误伤）', () => {
+    const d = classify(call('launch_dev_tool', { tool: 'claude', project_path: '~/workSpace/glyph' }))
+    expect(d.risk).toBe('green'); expect(d.allowed).toBe(true); expect(d.needsConfirm).toBe(false)
+  })
 })
