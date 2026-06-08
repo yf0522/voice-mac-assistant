@@ -21,5 +21,8 @@ for (const p of candidates) {
 export const CONFIG = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
   IDLE_TIMEOUT_MS: 5 * 60 * 1000,
-  GEMINI_MODEL: 'gemini-2.0-flash-live-001'
+  // 该 key 实际支持 bidiGenerateContent(实时语音) 的模型（用 ListModels 查得）：
+  //   gemini-2.5-flash-native-audio-latest / -preview-12-2025 / gemini-3.1-flash-live-preview
+  // 原生音频模型最适合语音对话；用 latest 别名跟随更新。
+  GEMINI_MODEL: 'gemini-2.5-flash-native-audio-latest'
 }
