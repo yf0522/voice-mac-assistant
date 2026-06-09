@@ -31,9 +31,11 @@ export async function connectLive(cb: LiveCallbacks) {
       // 关掉"思考"：native-audio 模型默认会先生成一大段推理才开口，导致回复慢、不像真人对话。
       // thinkingBudget=0 让它立即作答，逼近 speech-to-speech 的低延迟。
       thinkingConfig: { thinkingBudget: 0 },
-      // 快速断句：配合 capture 的 VAD 门控（只发语音），停顿 ~300ms 即判定说完，尽快开口。
+      // 手动活动检测：关掉 Gemini 自动 VAD。改由本地 VAD 明确发 activityStart/activityEnd，
+      // 这样我们一停说话就立刻发 activityEnd，模型瞬间断句作答（延迟最低），
+      // 也解决了「只发语音段时自动 VAD 收不到静音、永远判断不了说完」的干等问题。
       realtimeInputConfig: {
-        automaticActivityDetection: { silenceDurationMs: 300, prefixPaddingMs: 60 }
+        automaticActivityDetection: { disabled: true }
       },
       // 注：googleSearch 暂时撤掉，先排查它是否拖慢首字延迟；确认快了之后再决定是否加回。
       tools: [{ functionDeclarations }]
@@ -72,6 +74,9 @@ export async function connectLive(cb: LiveCallbacks) {
     sendAudio(base64pcm16k: string) {
       session.sendRealtimeInput({ audio: { data: base64pcm16k, mimeType: 'audio/pcm;rate=16000' } })
     },
+    // 手动活动检测：本地 VAD 检测到用户开始/结束说话时调用
+    startActivity() { session.sendRealtimeInput({ activityStart: {} }) },
+    endActivity() { session.sendRealtimeInput({ activityEnd: {} }) },
     sendToolResponses(results: ToolResult[]) {
       session.sendToolResponse({
         functionResponses: results.map(r => ({

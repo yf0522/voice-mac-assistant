@@ -59,12 +59,14 @@ export function createOrchestrator(win: BrowserWindow) {
 
   let audioOut = 0
   let audioIn = 0
+  let userActive = false // 手动活动检测：当前是否已发过 activityStart 未配对 activityEnd
   return {
     machine,
     async onWake() {
       console.log('[orch] onWake 触发, live已连接?=', !!live)
       machine.onWake()
       if (!live) {
+        userActive = false
         try {
           console.log('[orch] 正在连接 Gemini Live...')
           live = await connectLive({
@@ -95,7 +97,13 @@ export function createOrchestrator(win: BrowserWindow) {
       if (audioOut % 30 === 0) console.log('[orch] 已上传音频包:', audioOut)
       live?.sendAudio(b64); machine.onActivity()
     },
-    onVad(_speaking: boolean) { machine.onActivity() },
+    onVad(speaking: boolean) {
+      machine.onActivity()
+      if (!live) return
+      // 本地 VAD 的「开始/结束说话」转成 Gemini 的手动活动信号（去重，避免重复发）
+      if (speaking && !userActive) { userActive = true; live.startActivity(); console.log('[orch] activityStart') }
+      else if (!speaking && userActive) { userActive = false; live.endActivity(); console.log('[orch] activityEnd') }
+    },
     onConfirmResult(id: string, ok: boolean) { pendingConfirms.get(id)?.(ok); pendingConfirms.delete(id) }
   }
 }
