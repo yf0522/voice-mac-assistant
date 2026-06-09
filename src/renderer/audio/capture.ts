@@ -17,13 +17,21 @@ export async function startCapture(onPcm16kBase64: (b64: string) => void, onVad:
   const CHUNK_16K = 1600
   const HANGOVER_MS = 500
   const PREROLL = 3
+  const MIN_SPEECH_MS = 220 // 需连续说话 ≥220ms 才算"开口"：滤掉咳嗽/咔哒等短促瞬态，不触发打断
   let acc = new Float32Array(0)
   let speakingUntil = 0
   let wasSending = false
+  let speechRunMs = 0
   const preroll: string[] = []
   node.port.onmessage = (e: MessageEvent<Float32Array>) => {
     const frame = e.data
-    if (vad.process(frame)) speakingUntil = Date.now() + HANGOVER_MS
+    const frameMs = (frame.length / ctx.sampleRate) * 1000
+    if (vad.process(frame)) {
+      speechRunMs += frameMs
+      if (speechRunMs >= MIN_SPEECH_MS) speakingUntil = Date.now() + HANGOVER_MS // 持续够久才判定说话
+    } else {
+      speechRunMs = 0
+    }
     const ds = downsample(frame, ctx.sampleRate, 16000)
     const merged = new Float32Array(acc.length + ds.length)
     merged.set(acc); merged.set(ds, acc.length); acc = merged

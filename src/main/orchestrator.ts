@@ -69,38 +69,46 @@ export function createOrchestrator(win: BrowserWindow) {
     if (modelSpeakTimer) clearTimeout(modelSpeakTimer)
     modelSpeakTimer = setTimeout(() => { modelSpeaking = false }, 800)
   }
+  async function ensureLive(): Promise<boolean> {
+    if (live) return true
+    userActive = false
+    try {
+      console.log('[orch] 正在连接 Gemini Live...')
+      live = await connectLive({
+        onAudio: (a) => { if (audioIn++ === 0) console.log('[orch] 收到模型音频(首帧)'); markModelSpeaking(); send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
+        onText: (t) => { console.log('[orch] 模型文本:', t); send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }) },
+        onUserText: (t) => { console.log('[orch] 用户转录:', t); send(win, IPC.TRANSCRIPT, { role: 'user', text: t }) },
+        onInterrupted: () => send(win, IPC.INTERRUPT, undefined),
+        onTurnComplete: () => { modelSpeaking = false; if (modelSpeakTimer) clearTimeout(modelSpeakTimer) },
+        onToolCalls: (calls) => {
+          console.log('[orch] 收到 toolCalls:', calls.map(c => c.name).join(','))
+          toolQueue = toolQueue.then(() => handleToolCalls(calls)).catch(() => {})
+        },
+        onClose: () => { console.log('[orch] Gemini 会话关闭'); live = null }
+      })
+      console.log('[orch] Gemini Live 已连接 ✓')
+      return true
+    } catch (e: any) {
+      console.error('[orch] Gemini Live 连接失败:', e)
+      live = null
+      send(win, IPC.ACTION_LOG, { error: `Gemini Live 连接失败：${String(e?.message ?? e)}` })
+      machine.onDismiss()
+      return false
+    }
+  }
+
   return {
     machine,
     async onWake() {
       console.log('[orch] onWake 触发, live已连接?=', !!live)
       machine.onWake()
-      if (!live) {
-        userActive = false
-        try {
-          console.log('[orch] 正在连接 Gemini Live...')
-          live = await connectLive({
-            onAudio: (a) => { if (audioIn++ === 0) console.log('[orch] 收到模型音频(首帧)'); markModelSpeaking(); send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
-            onText: (t) => { console.log('[orch] 模型文本:', t); send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }) },
-            onUserText: (t) => { console.log('[orch] 用户转录:', t); send(win, IPC.TRANSCRIPT, { role: 'user', text: t }) },
-            onInterrupted: () => send(win, IPC.INTERRUPT, undefined),
-            onTurnComplete: () => { modelSpeaking = false; if (modelSpeakTimer) clearTimeout(modelSpeakTimer) },
-            onToolCalls: (calls) => {
-              console.log('[orch] 收到 toolCalls:', calls.map(c => c.name).join(','))
-              // 串行化：前一批 handleToolCalls 完成后再处理下一批，避免并发乱序。
-              toolQueue = toolQueue.then(() => handleToolCalls(calls)).catch(() => {})
-            },
-            onClose: () => { console.log('[orch] Gemini 会话关闭'); live = null }
-          })
-          console.log('[orch] Gemini Live 已连接 ✓')
-        } catch (e: any) {
-          // 连接失败（无 key / 网络）不应让主进程 unhandled rejection；
-          // 通过 IPC 把错误以动作日志形式告知渲染层并回到待机。
-          console.error('[orch] Gemini Live 连接失败:', e)
-          live = null
-          send(win, IPC.ACTION_LOG, { error: `Gemini Live 连接失败：${String(e?.message ?? e)}` })
-          machine.onDismiss()
-        }
-      }
+      await ensureLive()
+    },
+    // 文本输入：打字发给助手（必要时自动建会话并激活）
+    async onTextInput(text: string) {
+      machine.onWake()
+      send(win, IPC.STATE, machine.state)
+      if (await ensureLive()) live?.sendText(text)
     },
     onAudioChunk(b64: string) {
       if (modelSpeaking) return // 模型说话期间不上传，防回声

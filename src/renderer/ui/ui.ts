@@ -25,7 +25,7 @@ const RISK_COLOR: Record<Risk, string> = {
   green: 'var(--green)', yellow: 'var(--amber)', red: 'var(--red)'
 }
 
-export function mountUI(root: HTMLElement): UI {
+export function mountUI(root: HTMLElement, onSubmitText?: (text: string) => void): UI {
   root.innerHTML = `
     <div class="aurora"><b class="a1"></b><b class="a2"></b><b class="a3"></b></div>
     <div class="macwin">
@@ -47,6 +47,10 @@ export function mountUI(root: HTMLElement): UI {
         <div class="wakehint" id="wakehint">监听唤醒词 <b>「贾维斯」</b></div>
         <div class="sessmode" id="sessmode"><span class="live">●</span> 连续对话中 · 无需再喊唤醒词　<b id="idleTxt">静默 5:00 后待机</b></div>
         <div class="convo" id="convo"></div>
+        <div class="inputrow">
+          <input id="textInput" type="text" placeholder="也可以打字发给贾维斯…" autocomplete="off" />
+          <button id="sendBtn" title="发送">▶</button>
+        </div>
       </div>
       <div class="modal" id="modal">
         <div class="mcard">
@@ -74,6 +78,17 @@ export function mountUI(root: HTMLElement): UI {
   const mCmd = $('mCmd')
   const mOk = $('mOk') as HTMLButtonElement
   const mNo = $('mNo') as HTMLButtonElement
+  const textInput = $('textInput') as HTMLInputElement
+  const sendBtn = $('sendBtn') as HTMLButtonElement
+
+  const submit = () => {
+    const t = textInput.value.trim()
+    if (!t) return
+    textInput.value = ''
+    onSubmitText?.(t)
+  }
+  sendBtn.onclick = submit
+  textInput.onkeydown = (e) => { if (e.key === 'Enter') submit() }
 
   const fmt = (s: number) => {
     const v = Math.max(0, s)

@@ -7,8 +7,22 @@ import { startWakeWord } from './wakeword'
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
 
 const vox = (window as any).vox
-const ui = mountUI(document.getElementById('app')!)
+// 文本输入框提交：显示成用户气泡并发给助手
+const ui = mountUI(document.getElementById('app')!, (text: string) => {
+  ui.addUserText(text)
+  vox.sendText(text)
+})
 const playback = createPlayback()
+
+// 动作名 → 友好中文标签（前端不展示技术名/脚本原文）
+const ACTION_LABEL: Record<string, string> = {
+  open_app: '打开应用', quit_app: '退出应用', set_volume: '调整音量', lock_screen: '锁屏',
+  set_brightness: '调整亮度', set_dnd: '勿扰模式', list_directory: '查看文件夹',
+  create_folder: '新建文件夹', move_file: '移动文件', rename_file: '重命名文件',
+  launch_dev_tool: '启动开发工具', query_info: '查询信息',
+  run_shell: '执行命令', run_applescript: '执行操作'
+}
+const actionLabel = (name: string) => ACTION_LABEL[name] ?? '执行操作'
 
 let capture: { stop(): void } | null = null
 let idleTimer: ReturnType<typeof setInterval> | null = null
@@ -97,7 +111,7 @@ vox.onActionLog((log: { call?: { id: string; name: string }; decision?: { risk: 
   }
   if (!log.call || !log.decision) return
   // 仅创建 ⏳ 条目并登记到 Map；最终 ✓/✗ 由 ACTION_RESULT 按 id 精确回填
-  const handle = ui.addAction(log.call.name, log.decision.risk)
+  const handle = ui.addAction(actionLabel(log.call.name), log.decision.risk)
   pendingActions.set(log.call.id, handle)
 })
 

@@ -65,6 +65,7 @@ app.whenReady().then(async () => {
   on(IPC.AUDIO_CHUNK, (b64) => orch.onAudioChunk(b64))
   on(IPC.VAD, (speaking) => orch.onVad(speaking))
   on(IPC.CONFIRM_RESULT, ({ id, ok }) => orch.onConfirmResult(id, ok))
+  on(IPC.TEXT_INPUT, (text) => orch.onTextInput(text))
 
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })

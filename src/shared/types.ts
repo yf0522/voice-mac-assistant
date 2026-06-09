@@ -30,6 +30,7 @@ export const IPC = {
   WAKE_DETECTED: 'wake:detected',
   VAD: 'vad:state',
   CONFIRM_RESULT: 'action:confirm-result',
+  TEXT_INPUT: 'text:input',
   // main -> renderer
   STATE: 'session:state',
   IDLE_TICK: 'session:idle-tick',

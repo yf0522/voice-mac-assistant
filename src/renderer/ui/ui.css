@@ -150,3 +150,13 @@ body{font-family:var(--sans);background:
 .mbtns button{flex:1;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:10px;cursor:pointer;border:0}
 .mbtns .ok{background:var(--amber);color:#1a1305}
 .mbtns .no{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+
+/* 文本输入框 */
+.inputrow{display:flex;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.inputrow input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:9px 12px;color:var(--txt);font-family:inherit;font-size:13px;outline:none}
+.inputrow input:focus{border-color:var(--teal)}
+.inputrow input::placeholder{color:var(--dim)}
+.inputrow button{flex:0 0 auto;width:38px;height:36px;border:0;border-radius:10px;cursor:pointer;
+  background:var(--teal);color:#06131a;font-size:14px;font-weight:700}
+.inputrow button:hover{filter:brightness(1.1)}

@@ -81,6 +81,10 @@ export async function connectLive(cb: LiveCallbacks) {
     // 手动活动检测：本地 VAD 检测到用户开始/结束说话时调用
     startActivity() { session.sendRealtimeInput({ activityStart: {} }) },
     endActivity() { session.sendRealtimeInput({ activityEnd: {} }) },
+    // 文本输入：用户打字发来的消息
+    sendText(text: string) {
+      session.sendClientContent({ turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true })
+    },
     sendToolResponses(results: ToolResult[]) {
       session.sendToolResponse({
         functionResponses: results.map(r => ({
