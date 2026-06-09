@@ -1,5 +1,13 @@
 # VoxMac · 语音管家
 
+> A hands‑free, real‑time **speech‑to‑speech** voice assistant for macOS. Say the wake word **"Jarvis" (贾维斯)** → talk naturally over **Gemini Live API** → it understands your intent and **controls your Mac** (open/quit apps, system settings, files, run any AppleScript/shell, web search) → and replies back in voice. Fully local wake word (Vosk, offline, no cloud), continuous conversation, and a 3‑tier safety gateway. Built with Electron + TypeScript.
+
+![status](https://img.shields.io/badge/platform-macOS-black) ![stack](https://img.shields.io/badge/Electron%20%2B%20TypeScript-blue) ![model](https://img.shields.io/badge/Gemini%20Live-native%20audio-9b8cff) ![license](https://img.shields.io/badge/license-MIT-34e0c4)
+
+**English TL;DR:** wake word runs offline on‑device (Vosk); only after "Jarvis" does audio stream to Gemini Live. The model can call local tools to drive macOS. Everything runs from your own machine with your own Gemini API key. See **Setup** below. The rest of this README is in Chinese.
+
+---
+
 macOS 实时语音助手（Speech‑to‑Speech）。唤醒词「**贾维斯**」唤起 → 经 **Gemini Live API** 实时双向语音对话 → 理解意图后经**三级安全网关**执行 macOS 动作 → 把结果用语音说回。支持**连续对话**（唤醒后无需重复唤醒词）与**静默 5 分钟自动回待机**。
 
 > 设计稿与可交互原型见 `design-and-prototype.html`；完整实现计划见 `docs/superpowers/plans/`。
