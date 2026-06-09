@@ -14,7 +14,8 @@ const ROUTES: Record<string, Handler> = {
   list_directory: handleFiles, create_folder: handleFiles, move_file: handleFiles, rename_file: handleFiles,
   launch_dev_tool: handleDevtools,
   query_info: handleQuery,
-  run_shell: async (call, r) => ({ stdout: await r.exec('/bin/sh', ['-c', String(call.args.command)]) })
+  run_shell: async (call, r) => ({ stdout: await r.exec('/bin/sh', ['-c', String(call.args.command)]) }),
+  run_applescript: async (call, r) => ({ stdout: await r.osascript(String(call.args.script)) })
 }
 
 export function createExecutor(runner: Runner) {

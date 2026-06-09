@@ -5,7 +5,7 @@ import type { ToolCall, GatewayDecision } from '@shared/types'
 const KNOWN = new Set([
   'open_app', 'quit_app', 'set_volume', 'lock_screen', 'set_brightness', 'set_dnd',
   'list_directory', 'create_folder', 'move_file', 'rename_file',
-  'launch_dev_tool', 'query_info', 'run_shell'
+  'launch_dev_tool', 'query_info', 'run_shell', 'run_applescript'
 ])
 
 // 破坏性命令：递归/强制删除、磁盘抹除、写裸设备、fork 炸弹、关机重启等 → 需确认

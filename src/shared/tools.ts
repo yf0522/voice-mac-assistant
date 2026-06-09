@@ -31,5 +31,7 @@ export const functionDeclarations: FunctionDeclaration[] = [
   { name: 'query_info', description: '查询时间/日期/系统状态等只读信息',
     parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING } }, required: ['topic'] } },
   { name: 'run_shell', description: '执行任意 shell 命令（破坏性命令会请用户确认）',
-    parameters: { type: Type.OBJECT, properties: { command: { type: Type.STRING } }, required: ['command'] } }
+    parameters: { type: Type.OBJECT, properties: { command: { type: Type.STRING } }, required: ['command'] } },
+  { name: 'run_applescript', description: '执行任意 AppleScript，用于操控 macOS 上任何应用（点菜单、控制窗口、自动化 app 等）。需要复杂应用控制时用它。',
+    parameters: { type: Type.OBJECT, properties: { script: { type: Type.STRING } }, required: ['script'] } }
 ]

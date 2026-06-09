@@ -60,6 +60,15 @@ export function createOrchestrator(win: BrowserWindow) {
   let audioOut = 0
   let audioIn = 0
   let userActive = false // 手动活动检测：当前是否已发过 activityStart 未配对 activityEnd
+  // 模型说话期间，麦克风录到的多半是喇叭回声。此窗口内不收麦克风(不上传、不发活动信号)，
+  // 防止 AI 自己的声音把自己打断。turnComplete 或最后一块模型音频后 ~800ms 解除。
+  let modelSpeaking = false
+  let modelSpeakTimer: ReturnType<typeof setTimeout> | null = null
+  function markModelSpeaking() {
+    modelSpeaking = true
+    if (modelSpeakTimer) clearTimeout(modelSpeakTimer)
+    modelSpeakTimer = setTimeout(() => { modelSpeaking = false }, 800)
+  }
   return {
     machine,
     async onWake() {
@@ -70,10 +79,11 @@ export function createOrchestrator(win: BrowserWindow) {
         try {
           console.log('[orch] 正在连接 Gemini Live...')
           live = await connectLive({
-            onAudio: (a) => { if (audioIn++ === 0) console.log('[orch] 收到模型音频(首帧)'); send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
+            onAudio: (a) => { if (audioIn++ === 0) console.log('[orch] 收到模型音频(首帧)'); markModelSpeaking(); send(win, IPC.MODEL_AUDIO, a); machine.onActivity() },
             onText: (t) => { console.log('[orch] 模型文本:', t); send(win, IPC.TRANSCRIPT, { role: 'assistant', text: t }) },
             onUserText: (t) => { console.log('[orch] 用户转录:', t); send(win, IPC.TRANSCRIPT, { role: 'user', text: t }) },
             onInterrupted: () => send(win, IPC.INTERRUPT, undefined),
+            onTurnComplete: () => { modelSpeaking = false; if (modelSpeakTimer) clearTimeout(modelSpeakTimer) },
             onToolCalls: (calls) => {
               console.log('[orch] 收到 toolCalls:', calls.map(c => c.name).join(','))
               // 串行化：前一批 handleToolCalls 完成后再处理下一批，避免并发乱序。
@@ -93,13 +103,14 @@ export function createOrchestrator(win: BrowserWindow) {
       }
     },
     onAudioChunk(b64: string) {
+      if (modelSpeaking) return // 模型说话期间不上传，防回声
       if (audioOut++ === 0) console.log('[orch] 开始向 Gemini 上传音频(首包), live?=', !!live)
       if (audioOut % 30 === 0) console.log('[orch] 已上传音频包:', audioOut)
       live?.sendAudio(b64); machine.onActivity()
     },
     onVad(speaking: boolean) {
       machine.onActivity()
-      if (!live) return
+      if (!live || modelSpeaking) return // 模型说话期间忽略本地 VAD，防回声把模型自己打断
       // 本地 VAD 的「开始/结束说话」转成 Gemini 的手动活动信号（去重，避免重复发）
       if (speaking && !userActive) { userActive = true; live.startActivity(); console.log('[orch] activityStart') }
       else if (!speaking && userActive) { userActive = false; live.endActivity(); console.log('[orch] activityEnd') }

@@ -9,15 +9,18 @@ export interface LiveCallbacks {
   onText: (text: string) => void
   onUserText?: (text: string) => void   // 用户语音转录（inputTranscription）
   onInterrupted?: () => void            // 模型生成被打断（interrupted）
+  onTurnComplete?: () => void           // 模型本轮说完（turnComplete）
   onToolCalls: (calls: ReturnType<typeof parseServerMessage>['toolCalls']) => void
   onClose: () => void
 }
 
 const SYSTEM_INSTRUCTION =
-  '你是 macOS 桌面语音助手「贾维斯」。像真人朋友一样用简短、自然的中文口语对话——' +
-  '一般一句话说完，绝不长篇大论，不要复述用户的话。' +
-  '理解用户语音意图：需要操作电脑时立即调用相应工具函数，拿到结果后用一句话确认（如"好了，已打开Safari"）。' +
-  '普通闲聊就直接简短回答。无法执行或被安全策略拒绝时，一句话礼貌说明原因。'
+  '你是 macOS 桌面语音助手「贾维斯」，拥有对这台电脑的最高操作权限。' +
+  '像真人朋友一样用简短、自然的中文口语对话——一般一句话说完，绝不长篇大论，不要复述用户的话。' +
+  '理解用户语音意图后立即行动：能用专用函数(open_app/set_volume/list_directory 等)就用；' +
+  '要操控任意应用的菜单/窗口/自动化，用 run_applescript 写 AppleScript；要执行命令行操作，用 run_shell。' +
+  '需要实时/事实信息时用 Google 搜索。大胆去做，不要反复请示；拿到结果后用一句话确认（如"好了，已打开Safari"）。' +
+  '普通闲聊就直接简短回答。只有破坏性删除会弹确认，其余直接执行。失败时一句话说明原因。'
 
 export async function connectLive(cb: LiveCallbacks) {
   console.log('[gemini] connectLive: model=', CONFIG.GEMINI_MODEL, 'keyLen=', CONFIG.GEMINI_API_KEY.length)
@@ -37,8 +40,8 @@ export async function connectLive(cb: LiveCallbacks) {
       realtimeInputConfig: {
         automaticActivityDetection: { disabled: true }
       },
-      // 注：googleSearch 暂时撤掉，先排查它是否拖慢首字延迟；确认快了之后再决定是否加回。
-      tools: [{ functionDeclarations }]
+      // 工具：Google 搜索联网（实时/事实类问题）+ 本地动作函数
+      tools: [{ googleSearch: {} }, { functionDeclarations }]
     },
     callbacks: {
       onopen: () => console.log('[gemini] websocket onopen ✓'),
@@ -61,6 +64,7 @@ export async function connectLive(cb: LiveCallbacks) {
         if (p.text) cb.onText(p.text)
         if (p.inputTranscription) cb.onUserText?.(p.inputTranscription)
         if (p.interrupted) cb.onInterrupted?.()
+        if (msg?.serverContent?.turnComplete) cb.onTurnComplete?.()
         if (p.toolCalls.length) cb.onToolCalls(p.toolCalls)
       },
       onerror: (e: any) => console.error('[gemini] onerror', e?.message ?? e, e?.code ?? '', e?.reason ?? ''),

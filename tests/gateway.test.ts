@@ -6,7 +6,7 @@ const call = (name: string, args: any = {}) => ({ id: '1', name, args })
 describe('gateway classify（放权策略：仅破坏性命令需确认）', () => {
   it('普通动作直接执行、无需确认', () => {
     for (const n of ['open_app', 'quit_app', 'set_volume', 'lock_screen', 'list_directory',
-                     'create_folder', 'move_file', 'rename_file', 'launch_dev_tool', 'query_info']) {
+                     'create_folder', 'move_file', 'rename_file', 'launch_dev_tool', 'query_info', 'run_applescript']) {
       const d = classify(call(n))
       expect(d.allowed, n).toBe(true)
       expect(d.needsConfirm, n).toBe(false)
